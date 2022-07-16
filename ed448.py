@@ -160,6 +160,32 @@ class ed448:
         Y3 = E * (C - D)
         Z3 = E * J
         return ed448_point_xyz(X3, Y3, Z3)
+    
+    def point_double_xyz(self, P: ed448_point_xyz):
+        B = (P.X+P.Y)**2
+        C = P.X**2
+        D = P.Y**2
+        E = self.a*C
+        F = E+D
+        H = P.Z**2
+        J = F-2*H
+        X3 = (B-C-D)*J
+        Y3 = F*(E-D)
+        Z3 = F*J
+        return ed448_point_xyz(X3, Y3, Z3)  
+
+    def point_add_xyz(self, P: ed448_point_xyz, Q: ed448_point_xyz):
+        A = P.Z*Q.Z
+        B = A**2
+        C = P.X*Q.X
+        D = P.Y*Q.Y
+        E = self.d*C*D
+        F = B-E
+        G = B+E
+        X3 = A*F*((P.X+P.Y)*(Q.X+Q.Y)-C-D)
+        Y3 = A*G*(D-self.a*C)
+        Z3 = F*G
+        return ed448_point_xyz(X3, Y3, Z3) 
 
     # Computes Q = s * Q
     def point_mul(self, s, P: ed448_point):
@@ -234,7 +260,7 @@ class ed448:
         if len(public) != 57:
             raise Exception("Bad public key length")
         if len(signature) != 114:
-            Exception("Bad signature length")
+            raise Exception("Bad signature length")
         #Decode the public key as point A (point_decompress())
         A = ed448_point(public)
         #If the decoding fail the signature is invalid

@@ -96,6 +96,19 @@ class ed25519_point_xy(ed25519_point):
         self.X, self.Y, self.Z, self.T = self.x, self.y, self.Fp(1), self.x*self.y
         self.compressed_val = self.point_compress()
 
+class ed25519_point_xyz(ed25519_point):
+    def __init__(self, X, Y, Z):
+
+        self.p = 2**255 - 19
+        self.Fp = FiniteField(self.p)
+        self.X, self.Y, self.Z = self.Fp(X), self.Fp(Y), self.Fp(Z)
+        self.x = self.X / self.Z
+        self.y = self.Y / self.Z
+        self.d = self.Fp(-121665) / self.Fp(121666)
+        # Square root of -1
+        self.modp_sqrt_m1 = self.Fp(2) ** ((self.p-1) // 4)
+        self.compressed_val = self.point_compress()
+
 class ed25519_point_xyzt(ed25519_point):
     def __init__(self, X, Y, Z, T):
 
@@ -163,15 +176,44 @@ class ed25519:
         Z3 = F*G
         return ed25519_point_xyzt(X3, Y3, Z3, T3)
 
+    def point_double_xyz(self, P: ed25519_point_xyz):
+        B = (P.X+P.Y)**2
+        C = P.X**2
+        D = P.Y**2
+        E = self.a*C
+        F = E+D
+        H = P.Z**2
+        J = F-2*H
+        X3 = (B-C-D)*J
+        Y3 = F*(E-D)
+        Z3 = F*J
+        return ed25519_point_xyz(X3, Y3, Z3)  
+
+    def point_add_xyz(self, P: ed25519_point_xyz, Q: ed25519_point_xyz):
+        A = P.Z*Q.Z
+        B = A**2
+        C = P.X*Q.X
+        D = P.Y*Q.Y
+        E = self.d*C*D
+        F = B-E
+        G = B+E
+        X3 = A*F*((P.X+P.Y)*(Q.X+Q.Y)-C-D)
+        Y3 = A*G*(D-self.a*C)
+        Z3 = F*G
+        return ed25519_point_xyz(X3, Y3, Z3)   
+
     # Computes Q = s * Q
     def point_mul(self, s, P: ed25519_point):
 
         Q = ed25519_point_xyzt(0, 1, 1, 0)  # Neutral element
+        #Q = ed25519_point_xyz(0, 1, 1)  # Neutral element
 
         while s > 0:
             if s & 1:
                 Q = self.point_add(Q, P)
             P = self.point_double(P)
+            #    Q = self.point_add_xyz(Q, P)
+            #P = self.point_double_xyz(P)
             s >>= 1
         return Q
     
@@ -238,7 +280,7 @@ class ed25519:
         if len(public) != 32:
             raise Exception("Bad public key length")
         if len(signature) != 64:
-            Exception("Bad signature length")
+            raise Exception("Bad signature length")
         #Decode the public key as point A (point_decompress())
         A = ed25519_point(public)
         #If the decoding fail the signature is invalid
@@ -266,7 +308,7 @@ class ed25519:
 
         sB = self.point_mul(s, self.G)
         kA = self.point_mul(k, A)
-        return self.point_equal(sB, self.point_add(R, kA))
+        return self.point_equal(sB, self.point_add_xyz(R, kA))
 
 
 if __name__ == "__main__":
