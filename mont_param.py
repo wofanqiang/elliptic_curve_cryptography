@@ -1,5 +1,6 @@
 import math
 
+#https://cp-algorithms.com/algebra/montgomery_multiplication.html
 
 print(f"\n------------ 2^(2n) mod p -------------")
 def mmm_b(x, y, q, e):
